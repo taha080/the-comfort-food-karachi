@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Owner Orders — The Comfort Food</title>
+<style>
+  :root{
+    --olive-main:#6B7C3F; --olive-dark:#4A5A2A; --cream-bg:#F7F3E8;
+    --text-dark:#2B2B22; --text-muted:#7A7563; --border-warm:#D5CEBE;
+    --card-bg:#FFFDF6; --red:#B3402E; --green:#2E7D32;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Plus Jakarta Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--cream-bg);color:var(--text-dark)}
+  header{position:sticky;top:0;z-index:10;background:var(--olive-dark);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  header h1{font-size:17px;margin:0;flex:1}
+  .live-dot{width:11px;height:11px;border-radius:50%;background:#58d68d;display:inline-block;animation:pulse 1.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(88,214,141,.7)}70%{box-shadow:0 0 0 9px rgba(88,214,141,0)}100%{box-shadow:0 0 0 0 rgba(88,214,141,0)}}
+  .pill{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:999px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer}
+  .pill.off{opacity:.55}
+  main{max-width:760px;margin:0 auto;padding:14px 14px 40px}
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0}
+  .stat{background:var(--card-bg);border:1.5px solid var(--border-warm);border-radius:14px;padding:12px;text-align:center}
+  .stat b{display:block;font-size:20px;color:var(--olive-dark)}
+  .stat span{font-size:12px;color:var(--text-muted);font-weight:700}
+  .toolbar{display:flex;gap:8px;margin:6px 0 12px}
+  .toolbar input{flex:1;padding:11px 12px;border:1.5px solid var(--border-warm);border-radius:999px;font-size:14px;background:#fff}
+  .toolbar button{padding:11px 16px;border-radius:999px;border:none;background:var(--olive-main);color:#fff;font-weight:800;cursor:pointer}
+  #newBanner{display:none;background:var(--red);color:#fff;font-weight:800;text-align:center;padding:13px;border-radius:14px;margin-bottom:12px;font-size:16px;animation:pulse 1.2s infinite}
+  .order-card{background:var(--card-bg);border:1.5px solid var(--border-warm);border-radius:16px;padding:14px;margin-bottom:12px}
+  .order-card.is-new{border:2px solid var(--red);box-shadow:0 0 0 3px rgba(179,64,46,.18)}
+  .order-head{display:flex;justify-content:space-between;font-weight:800;color:var(--olive-dark);gap:8px}
+  .order-head .total{white-space:nowrap}
+  .order-sub{font-size:12.5px;color:var(--olive-main);font-weight:700;margin:5px 0}
+  .order-addr{font-size:13px;color:var(--text-muted);margin:5px 0;line-height:1.45}
+  .order-items{font-size:13px;background:var(--cream-bg);padding:8px 10px;border-radius:10px;font-weight:600;line-height:1.5}
+  .order-meta{font-size:12px;color:var(--text-muted);margin-top:7px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .order-actions{display:flex;gap:8px;margin-top:10px}
+  .order-actions a{flex:1;text-align:center;text-decoration:none;padding:10px;border-radius:999px;font-weight:800;font-size:13.5px}
+  .btn-call{background:var(--olive-main);color:#fff}
+  .btn-wa{background:#25D366;color:#fff}
+  .status{font-size:12px;color:var(--text-muted);text-align:center;padding:16px 0}
+  .empty{text-align:center;color:var(--text-muted);padding:34px 10px;font-weight:600}
+  /* PIN gate */
+  #pinGate{position:fixed;inset:0;background:var(--cream-bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
+  .pin-box{background:var(--card-bg);border:1.5px solid var(--border-warm);border-radius:20px;padding:28px 22px;max-width:360px;width:100%;text-align:center}
+  .pin-box h2{margin:0 0 6px;color:var(--olive-dark);font-size:20px}
+  .pin-box p{color:var(--text-muted);font-size:13.5px;margin:0 0 16px;line-height:1.5}
+  .pin-box input{width:100%;padding:13px;text-align:center;font-size:22px;letter-spacing:8px;border:1.5px solid var(--border-warm);border-radius:12px}
+  .pin-box button{width:100%;margin-top:12px;padding:13px;border:none;border-radius:999px;background:var(--olive-main);color:#fff;font-weight:800;font-size:15px;cursor:pointer}
+  #pinErr{color:var(--red);font-weight:700;font-size:13px;min-height:18px;margin-top:8px}
+  .pin-hint{font-size:12px;color:var(--text-muted);margin-top:10px;line-height:1.5}
+</style>
+</head>
+<body>
+
+<div id="pinGate">
+  <div class="pin-box">
+    <h2>🔒 Owner Only</h2>
+    <p>The Comfort Food — live orders. Sirf owner ke liye hai. Apna PIN daalein.</p>
+    <input id="pinInput" type="password" inputmode="numeric" maxlength="8" placeholder="••••" autocomplete="off" />
+    <button type="button" onclick="unlock()">Unlock Orders</button>
+    <div id="pinErr"></div>
+    <div class="pin-hint">PIN bhool gaye? Repo mein <b>owner.html</b> ke upar <b>OWNER_PIN</b> wali line badlein, phir dobara publish karein.</div>
+  </div>
+</div>
+
+<header>
+  <span class="live-dot" id="liveDot"></span>
+  <h1>The Comfort Food — Owner Orders</h1>
+  <button class="pill" id="soundBtn" type="button" onclick="enableAlerts()">🔔 Alerts On Karein</button>
+  <button class="pill" type="button" onclick="loadOrders(true)">↻ Refresh</button>
+</header>
+
+<main id="app" style="display:none">
+  <div id="newBanner">🔔 NAYA ORDER AAYA HAI!</div>
+  <div class="stats">
+    <div class="stat"><b id="statToday">0</b><span>Aaj ke orders</span></div>
+    <div class="stat"><b id="statTodayRs">Rs. 0</b><span>Aaj ki sale</span></div>
+    <div class="stat"><b id="statTotal">0</b><span>Kul orders (list)</span></div>
+  </div>
+  <div class="toolbar">
+    <input id="searchBox" type="search" placeholder="Search: naam, phone, order code, area..." oninput="renderOrders()" />
+  </div>
+  <div class="status" id="statusLine">Loading live orders...</div>
+  <div id="ordersList"></div>
+</main>
+
+<script>
+  // ===== OWNER PIN — apna PIN yahan badlein (sirf yeh line) =====
+  const OWNER_PIN = "1234";
+  // ==============================================================
+
+  const SUPABASE_URL = "https://jvjgouivqzklfzshmdti.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2amdvdWl2cXprbGZ6c2htZHRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNjcyNjksImV4cCI6MjEwNzk0MzI2OX0.URdC4ytMmQEvAtvkyaUkIBjCYUfvyYUbC9EY1-CREBE";
+  const POLL_MS = 15000; // har 15 second mein naya order check
+
+  let allOrders = [];
+  let seenCodes = new Set();
+  let firstLoadDone = false;
+  let alertsOn = false;
+  let audioCtx = null;
+  let lastCheck = null;
+
+  function unlock() {
+    const v = document.getElementById("pinInput").value.trim();
+    if (v === OWNER_PIN) {
+      sessionStorage.setItem("tcf_owner_ok", "1");
+      document.getElementById("pinGate").style.display = "none";
+      document.getElementById("app").style.display = "block";
+      loadOrders(true);
+      setInterval(() => loadOrders(false), POLL_MS);
+    } else {
+      document.getElementById("pinErr").textContent = "Ghalat PIN — dobara try karein.";
+      document.getElementById("pinInput").value = "";
+      document.getElementById("pinInput").focus();
+    }
+  }
+  document.getElementById("pinInput").addEventListener("keydown", e => { if (e.key === "Enter") unlock(); });
+
+  if (sessionStorage.getItem("tcf_owner_ok") === "1") {
+    document.getElementById("pinGate").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    loadOrders(true);
+    setInterval(() => loadOrders(false), POLL_MS);
+  } else {
+    document.getElementById("pinInput").focus();
+  }
+
+  function enableAlerts() {
+    alertsOn = true;
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      audioCtx.resume();
+    } catch (e) {}
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+    const b = document.getElementById("soundBtn");
+    b.textContent = "🔔 Alerts On ✓";
+    b.classList.remove("off");
+    beep();
+  }
+
+  function beep() {
+    if (!alertsOn || !audioCtx) return;
+    try {
+      [0, 0.35, 0.7].forEach(delay => {
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.connect(g); g.connect(audioCtx.destination);
+        o.frequency.value = 880;
+        g.gain.setValueAtTime(0.0001, audioCtx.currentTime + delay);
+        g.gain.exponentialRampToValueAtTime(0.25, audioCtx.currentTime + delay + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + delay + 0.3);
+        o.start(audioCtx.currentTime + delay);
+        o.stop(audioCtx.currentTime + delay + 0.32);
+      });
+    } catch (e) {}
+  }
+
+  function notifyNew(order) {
+    document.title = "🔔 NEW ORDER! — The Comfort Food";
+    setTimeout(() => { document.title = "Owner Orders — The Comfort Food"; }, 8000);
+    beep();
+    if ("Notification" in window && Notification.permission === "granted") {
+      try {
+        new Notification("Naya order — The Comfort Food", {
+          body: "#" + order.order_code + " • " + order.customer_name + " • Rs. " + (order.total_pkr || 0).toLocaleString()
+        });
+      } catch (e) {}
+    }
+  }
+
+  function waNumber(phone) {
+    let d = String(phone || "").replace(/\D/g, "");
+    if (d.startsWith("0")) d = "92" + d.slice(1);
+    return d;
+  }
+
+  function fmtTime(iso) {
+    try {
+      return new Date(iso).toLocaleString("en-GB", {
+        timeZone: "Asia/Karachi", day: "2-digit", month: "short",
+        hour: "2-digit", minute: "2-digit", hour12: true
+      });
+    } catch (e) { return iso || ""; }
+  }
+
+  function isToday(iso) {
+    try {
+      const d = new Date(iso).toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" });
+      const now = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" });
+      return d === now;
+    } catch (e) { return false; }
+  }
+
+  async function loadOrders(manual) {
+    const statusEl = document.getElementById("statusLine");
+    try {
+      const res = await fetch(SUPABASE_URL + "/rest/v1/comfort_food_orders?select=*&order=created_at.desc&limit=50", {
+        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + SUPABASE_ANON_KEY }
+      });
+      if (!res.ok) throw new Error("Database returned " + res.status);
+      const orders = await res.json();
+      if (!Array.isArray(orders)) throw new Error("Unexpected response");
+
+      const fresh = [];
+      orders.forEach(o => {
+        if (firstLoadDone && !seenCodes.has(o.order_code)) fresh.push(o);
+        seenCodes.add(o.order_code);
+      });
+      allOrders = orders;
+      firstLoadDone = true;
+      lastCheck = new Date();
+
+      renderOrders();
+
+      if (fresh.length > 0) {
+        const banner = document.getElementById("newBanner");
+        banner.style.display = "block";
+        banner.textContent = "🔔 " + fresh.length + " NAYA ORDER AAYA HAI! — #" + fresh[0].order_code + " • " + fresh[0].customer_name;
+        fresh.forEach(notifyNew);
+        setTimeout(() => { banner.style.display = "none"; }, 30000);
+      }
+      statusEl.textContent = "Live • Last checked: " + lastCheck.toLocaleTimeString("en-GB", { timeZone: "Asia/Karachi" }) + " PKT • Auto-refresh har 15 second";
+    } catch (e) {
+      statusEl.textContent = "⚠️ Orders load nahi ho sake: " + e.message + " — Refresh dabayein.";
+    }
+  }
+
+  function renderOrders() {
+    const q = (document.getElementById("searchBox").value || "").toLowerCase().trim();
+    const list = document.getElementById("ordersList");
+    const today = allOrders.filter(o => isToday(o.created_at));
+    document.getElementById("statToday").textContent = today.length;
+    document.getElementById("statTodayRs").textContent = "Rs. " + today.reduce((s, o) => s + (o.total_pkr || 0), 0).toLocaleString();
+    document.getElementById("statTotal").textContent = allOrders.length;
+
+    const shown = allOrders.filter(o => {
+      if (!q) return true;
+      const hay = [o.order_code, o.customer_name, o.customer_phone, o.delivery_area, o.delivery_address].join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+
+    if (shown.length === 0) {
+      list.innerHTML = '<div class="empty">Abhi tak koi order nahi aaya.<br>Jaise hi koi order place karega, yahan foran dikh jayega.</div>';
+      return;
+    }
+
+    list.innerHTML = shown.map(o => {
+      const items = Array.isArray(o.items)
+        ? o.items.map(i => i.qty + "x " + i.name + " (Rs. " + (i.price * i.qty).toLocaleString() + ")").join("<br>")
+        : "";
+      const wa = waNumber(o.customer_phone);
+      return `
+        <div class="order-card">
+          <div class="order-head"><span>#${o.order_code} — ${o.customer_name || ""}</span><span class="total">Rs. ${(o.total_pkr || 0).toLocaleString()}</span></div>
+          <div class="order-sub">📞 ${o.customer_phone || ""} • 📍 ${o.delivery_area || ""} • 🕐 ${fmtTime(o.created_at)}</div>
+          <div class="order-addr">🏠 ${o.delivery_address || ""}${o.order_notes ? "<br>📝 " + o.order_notes : ""}</div>
+          <div class="order-items">🍽️ ${items}</div>
+          <div class="order-meta"><span>Subtotal Rs. ${(o.subtotal_pkr || 0).toLocaleString()} + Delivery Rs. ${(o.delivery_fee_pkr || 0).toLocaleString()}</span><span>${o.payment_method || "Cash on Delivery"} • ${o.status || ""}</span></div>
+          <div class="order-actions">
+            <a class="btn-call" href="tel:${String(o.customer_phone || "").replace(/[^0-9+]/g, "")}">📞 Call Karein</a>
+            <a class="btn-wa" href="https://wa.me/${wa}?text=${encodeURIComponent("Assalam-o-Alaikum " + (o.customer_name || "") + "! The Comfort Food se aapka order #" + o.order_code + " mil gaya hai. Shukriya!")}" target="_blank" rel="noopener">💬 WhatsApp</a>
+          </div>
+        </div>`;
+    }).join("");
+  }
+</script>
+</body>
+</html>
