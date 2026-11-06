@@ -50,6 +50,13 @@
   .pin-box button{width:100%;margin-top:12px;padding:13px;border:none;border-radius:999px;background:var(--olive-main);color:#fff;font-weight:800;font-size:15px;cursor:pointer}
   #pinErr{color:var(--red);font-weight:700;font-size:13px;min-height:18px;margin-top:8px}
   .pin-hint{font-size:12px;color:var(--text-muted);margin-top:10px;line-height:1.5}
+  .link-btn{background:none;border:none;color:var(--olive-main);font-weight:800;font-size:13.5px;cursor:pointer;text-decoration:underline;padding:6px 0}
+  #resetMsg{color:var(--green);font-weight:700;font-size:13px;min-height:18px;margin-top:8px;line-height:1.5}
+  #resetForm{display:none}
+  #resetForm p{color:var(--text-muted);font-size:13.5px;margin:0 0 16px;line-height:1.5}
+  #resetForm input{width:100%;padding:13px 14px;font-size:15px;border:1.5px solid var(--border-warm);border-radius:12px;margin-bottom:10px}
+  #resetForm button{width:100%;margin-top:12px;padding:13px;border:none;border-radius:999px;background:var(--olive-main);color:#fff;font-weight:800;font-size:15px;cursor:pointer}
+  #resetErr{color:var(--red);font-weight:700;font-size:13px;min-height:18px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -58,11 +65,21 @@
   <div class="pin-box">
     <h2>🔒 Owner Only</h2>
     <p>The Comfort Food — live orders. Sirf owner ke liye hai. Apni owner email aur password se login karein.</p>
-    <input id="loginEmail" type="email" placeholder="Owner email" autocomplete="username" />
-    <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password" />
-    <button type="button" onclick="login()">Login</button>
-    <div id="pinErr"></div>
-    <div class="pin-hint">Password bhool gaye? Supabase dashboard → Authentication mein owner user ka password reset karein.</div>
+    <div id="loginForm">
+      <input id="loginEmail" type="email" placeholder="Owner email" autocomplete="username" />
+      <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password" />
+      <button type="button" onclick="login()">Login</button>
+      <div id="pinErr"></div>
+      <button type="button" class="link-btn" onclick="forgotPassword()">Password bhool gaye?</button>
+      <div id="resetMsg"></div>
+    </div>
+    <div id="resetForm">
+      <p>Email wale link se aaye hain — apna naya password daalein.</p>
+      <input id="newPass" type="password" placeholder="Naya password" autocomplete="new-password" />
+      <input id="newPass2" type="password" placeholder="Naya password dobara" autocomplete="new-password" />
+      <button type="button" onclick="setNewPassword()">Naya password save karein</button>
+      <div id="resetErr"></div>
+    </div>
   </div>
 </div>
 
@@ -127,15 +144,52 @@
     showApp();
   }
 
+  async function forgotPassword() {
+    const email = document.getElementById("loginEmail").value.trim();
+    const errEl = document.getElementById("pinErr");
+    const msgEl = document.getElementById("resetMsg");
+    errEl.textContent = "";
+    msgEl.textContent = "";
+    if (!email) { errEl.textContent = "Pehle apni owner email upar daalein, phir 'Password bhool gaye?' dabayein."; document.getElementById("loginEmail").focus(); return; }
+    const { error } = await supa.auth.resetPasswordForEmail(email, { redirectTo: "https://taha080.github.io/the-comfort-food-karachi/owner.html" });
+    if (error) { errEl.textContent = "Reset link nahi bheja ja saka — dobara try karein."; return; }
+    msgEl.textContent = "Reset link aap ki email par bhej diya gaya hai. Inbox (aur spam folder) check karein — link par click karke naya password set karein.";
+  }
+
+  async function setNewPassword() {
+    const p1 = document.getElementById("newPass").value;
+    const p2 = document.getElementById("newPass2").value;
+    const errEl = document.getElementById("resetErr");
+    errEl.textContent = "";
+    if (!p1 || p1.length < 6) { errEl.textContent = "Naya password kam se kam 6 characters ka ho."; return; }
+    if (p1 !== p2) { errEl.textContent = "Dono password aik jaise nahi hain."; return; }
+    const { error } = await supa.auth.updateUser({ password: p1 });
+    if (error) { errEl.textContent = "Password set nahi ho saka — link expire ho gaya ho to dobara reset link mangwayein."; return; }
+    history.replaceState(null, "", location.pathname + location.search);
+    showApp();
+  }
+
   async function logout() {
     await supa.auth.signOut();
     location.reload();
   }
 
   document.getElementById("loginPass").addEventListener("keydown", e => { if (e.key === "Enter") login(); });
+  document.getElementById("newPass2").addEventListener("keydown", e => { if (e.key === "Enter") setNewPassword(); });
+
+  function showResetForm() {
+    document.getElementById("loginForm").style.display = "none";
+    document.getElementById("resetForm").style.display = "block";
+  }
+
+  // Recovery link se aaye hon (PASSWORD_RECOVERY) to naya password form dikhayein
+  supa.auth.onAuthStateChange((event) => {
+    if (event === "PASSWORD_RECOVERY") showResetForm();
+  });
 
   // Pehle se login hai to seedha orders dikhayein
   supa.auth.getSession().then(({ data }) => {
+    if (data && data.session && location.hash.indexOf("type=recovery") !== -1) { showResetForm(); return; }
     if (data && data.session) showApp();
     else document.getElementById("loginEmail").focus();
   });
