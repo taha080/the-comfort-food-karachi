@@ -70,14 +70,14 @@
       <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password" />
       <button type="button" onclick="login()">Login</button>
       <div id="pinErr"></div>
-      <button type="button" class="link-btn" onclick="forgotPassword()">Password bhool gaye?</button>
+      <button type="button" class="link-btn" onclick="forgotPassword()">Forgot password?</button>
       <div id="resetMsg"></div>
     </div>
     <div id="resetForm">
-      <p>Email wale link se aaye hain — apna naya password daalein.</p>
-      <input id="newPass" type="password" placeholder="Naya password" autocomplete="new-password" />
-      <input id="newPass2" type="password" placeholder="Naya password dobara" autocomplete="new-password" />
-      <button type="button" onclick="setNewPassword()">Naya password save karein</button>
+      <p>Set your new password below.</p>
+      <input id="newPass" type="password" placeholder="New password" autocomplete="new-password" />
+      <input id="newPass2" type="password" placeholder="Confirm new password" autocomplete="new-password" />
+      <button type="button" onclick="setNewPassword()">Save new password</button>
       <div id="resetErr"></div>
     </div>
   </div>
@@ -150,10 +150,10 @@
     const msgEl = document.getElementById("resetMsg");
     errEl.textContent = "";
     msgEl.textContent = "";
-    if (!email) { errEl.textContent = "Pehle apni owner email upar daalein, phir 'Password bhool gaye?' dabayein."; document.getElementById("loginEmail").focus(); return; }
+    if (!email) { errEl.textContent = "Please enter your owner email above first, then click 'Forgot password?'."; document.getElementById("loginEmail").focus(); return; }
     const { error } = await supa.auth.resetPasswordForEmail(email, { redirectTo: "https://taha080.github.io/the-comfort-food-karachi/owner.html" });
-    if (error) { errEl.textContent = "Reset link nahi bheja ja saka — dobara try karein."; return; }
-    msgEl.textContent = "Reset link aap ki email par bhej diya gaya hai. Inbox (aur spam folder) check karein — link par click karke naya password set karein.";
+    if (error) { errEl.textContent = "The reset link could not be sent — please try again."; return; }
+    msgEl.textContent = "A reset link has been sent to your email. Please check your inbox (and spam folder) — click the link to set a new password.";
   }
 
   async function setNewPassword() {
@@ -161,10 +161,10 @@
     const p2 = document.getElementById("newPass2").value;
     const errEl = document.getElementById("resetErr");
     errEl.textContent = "";
-    if (!p1 || p1.length < 6) { errEl.textContent = "Naya password kam se kam 6 characters ka ho."; return; }
-    if (p1 !== p2) { errEl.textContent = "Dono password aik jaise nahi hain."; return; }
+    if (!p1 || p1.length < 6) { errEl.textContent = "Your new password must be at least 6 characters."; return; }
+    if (p1 !== p2) { errEl.textContent = "The two passwords do not match."; return; }
     const { error } = await supa.auth.updateUser({ password: p1 });
-    if (error) { errEl.textContent = "Password set nahi ho saka — link expire ho gaya ho to dobara reset link mangwayein."; return; }
+    if (error) { errEl.textContent = "The password could not be set — if the link has expired, please request a new reset link."; return; }
     history.replaceState(null, "", location.pathname + location.search);
     showApp();
   }
