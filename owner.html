@@ -46,7 +46,7 @@
   .pin-box{background:var(--card-bg);border:1.5px solid var(--border-warm);border-radius:20px;padding:28px 22px;max-width:360px;width:100%;text-align:center}
   .pin-box h2{margin:0 0 6px;color:var(--olive-dark);font-size:20px}
   .pin-box p{color:var(--text-muted);font-size:13.5px;margin:0 0 16px;line-height:1.5}
-  .pin-box input{width:100%;padding:13px;text-align:center;font-size:22px;letter-spacing:8px;border:1.5px solid var(--border-warm);border-radius:12px}
+  .pin-box input{width:100%;padding:13px 14px;font-size:15px;border:1.5px solid var(--border-warm);border-radius:12px;margin-bottom:10px}
   .pin-box button{width:100%;margin-top:12px;padding:13px;border:none;border-radius:999px;background:var(--olive-main);color:#fff;font-weight:800;font-size:15px;cursor:pointer}
   #pinErr{color:var(--red);font-weight:700;font-size:13px;min-height:18px;margin-top:8px}
   .pin-hint{font-size:12px;color:var(--text-muted);margin-top:10px;line-height:1.5}
@@ -57,11 +57,12 @@
 <div id="pinGate">
   <div class="pin-box">
     <h2>🔒 Owner Only</h2>
-    <p>The Comfort Food — live orders. Sirf owner ke liye hai. Apna PIN daalein.</p>
-    <input id="pinInput" type="password" inputmode="text" maxlength="20" placeholder="••••" autocomplete="off" />
-    <button type="button" onclick="unlock()">Unlock Orders</button>
+    <p>The Comfort Food — live orders. Sirf owner ke liye hai. Apni owner email aur password se login karein.</p>
+    <input id="loginEmail" type="email" placeholder="Owner email" autocomplete="username" />
+    <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password" />
+    <button type="button" onclick="login()">Login</button>
     <div id="pinErr"></div>
-    <div class="pin-hint">PIN bhool gaye? Repo mein <b>owner.html</b> ke upar <b>OWNER_PIN</b> wali line badlein, phir dobara publish karein.</div>
+    <div class="pin-hint">Password bhool gaye? Supabase dashboard → Authentication mein owner user ka password reset karein.</div>
   </div>
 </div>
 
@@ -70,6 +71,7 @@
   <h1>The Comfort Food — Owner Orders</h1>
   <button class="pill" id="soundBtn" type="button" onclick="enableAlerts()">🔔 Alerts On Karein</button>
   <button class="pill" type="button" onclick="loadOrders(true)">↻ Refresh</button>
+  <button class="pill" type="button" onclick="logout()">Logout</button>
 </header>
 
 <main id="app" style="display:none">
@@ -86,13 +88,13 @@
   <div id="ordersList"></div>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // ===== OWNER PIN — apna PIN yahan badlein (sirf yeh line) =====
-  const OWNER_PIN = "safeena1";
-  // ==============================================================
-
+  // Owner login — Supabase Auth (email + password). PIN system removed:
+  // PIN sirf browser mein check hota tha, orders phir bhi public key se parhe ja sakte the.
   const SUPABASE_URL = "https://jvjgouivqzklfzshmdti.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp2amdvdWl2cXprbGZ6c2htZHRpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIzNjcyNjksImV4cCI6MjEwNzk0MzI2OX0.URdC4ytMmQEvAtvkyaUkIBjCYUfvyYUbC9EY1-CREBE";
+  const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const POLL_MS = 15000; // har 15 second mein naya order check
 
   let allOrders = [];
@@ -102,30 +104,41 @@
   let audioCtx = null;
   let lastCheck = null;
 
-  function unlock() {
-    const v = document.getElementById("pinInput").value.trim();
-    if (v === OWNER_PIN) {
-      sessionStorage.setItem("tcf_owner_ok", "1");
-      document.getElementById("pinGate").style.display = "none";
-      document.getElementById("app").style.display = "block";
-      loadOrders(true);
-      setInterval(() => loadOrders(false), POLL_MS);
-    } else {
-      document.getElementById("pinErr").textContent = "Ghalat PIN — dobara try karein.";
-      document.getElementById("pinInput").value = "";
-      document.getElementById("pinInput").focus();
-    }
-  }
-  document.getElementById("pinInput").addEventListener("keydown", e => { if (e.key === "Enter") unlock(); });
-
-  if (sessionStorage.getItem("tcf_owner_ok") === "1") {
+  function showApp() {
     document.getElementById("pinGate").style.display = "none";
     document.getElementById("app").style.display = "block";
     loadOrders(true);
     setInterval(() => loadOrders(false), POLL_MS);
-  } else {
-    document.getElementById("pinInput").focus();
   }
+
+  async function login() {
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPass").value;
+    const errEl = document.getElementById("pinErr");
+    errEl.textContent = "";
+    if (!email || !password) { errEl.textContent = "Email aur password dono daalein."; return; }
+    const { error } = await supa.auth.signInWithPassword({ email, password });
+    if (error) {
+      errEl.textContent = "Login nahi ho saka — email ya password ghalat hai.";
+      document.getElementById("loginPass").value = "";
+      document.getElementById("loginPass").focus();
+      return;
+    }
+    showApp();
+  }
+
+  async function logout() {
+    await supa.auth.signOut();
+    location.reload();
+  }
+
+  document.getElementById("loginPass").addEventListener("keydown", e => { if (e.key === "Enter") login(); });
+
+  // Pehle se login hai to seedha orders dikhayein
+  supa.auth.getSession().then(({ data }) => {
+    if (data && data.session) showApp();
+    else document.getElementById("loginEmail").focus();
+  });
 
   function enableAlerts() {
     alertsOn = true;
@@ -198,8 +211,10 @@
   async function loadOrders(manual) {
     const statusEl = document.getElementById("statusLine");
     try {
+      const { data: { session } } = await supa.auth.getSession();
+      if (!session) throw new Error("Login khatam ho gaya — dobara login karein.");
       const res = await fetch(SUPABASE_URL + "/rest/v1/comfort_food_orders?select=*&order=created_at.desc&limit=50", {
-        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + SUPABASE_ANON_KEY }
+        headers: { "apikey": SUPABASE_ANON_KEY, "Authorization": "Bearer " + session.access_token }
       });
       if (!res.ok) throw new Error("Database returned " + res.status);
       const orders = await res.json();

@@ -920,9 +920,6 @@
       </nav>
 
       <div class="nav-actions">
-        <button type="button" class="btn-orders-feed" onclick="openKitchenFeed()">
-          📋 Live Orders
-        </button>
         <button type="button" class="btn-cart-top" onclick="openCartDrawer()">
           🛒 Order Cart <span class="cart-count-pill" id="topCartCount">0</span>
         </button>
@@ -986,7 +983,6 @@
     <section class="menu-section">
       <div class="price-notice-banner">
         <span>💡 <strong>Menu &amp; Online Ordering Active:</strong> Tap <strong>+ Add to Order</strong> on any dish, adjust quantities, and complete checkout with your Karachi address.</span>
-        <button type="button" class="btn-orders-feed" onclick="openKitchenFeed()">View Saved Orders Database</button>
       </div>
 
       <div id="menuContainer"></div>
@@ -1016,7 +1012,7 @@
           <li>📍 <strong>City:</strong> Karachi, Pakistan (DHA, Clifton, PECHS, Gulshan, Johar, Nazimabad &amp; surrounding areas)</li>
           <li>💵 <strong>Payment:</strong> Cash on Delivery (PKR)</li>
           <li>🕒 <strong>Hours:</strong> Daily 12:00 PM – 12:00 AM PKT</li>
-          <li>📦 <strong>Live Order Tracking:</strong> Click <em>"Live Orders"</em> in the top bar anytime to inspect placed orders</li>
+          <li>📦 <strong>Instant Confirmation:</strong> Every order is saved immediately and you get an order code right away</li>
         </ul>
       </div>
     </section>
@@ -1439,57 +1435,6 @@
       saveCart();
       renderMenu();
       renderCartDrawerContent();
-    }
-
-    async function openKitchenFeed() {
-      document.getElementById("drawerTitle").textContent = "📋 Live Kitchen Orders Database";
-      document.getElementById("cartDrawerBackdrop").classList.add("open");
-      const body = document.getElementById("drawerBody");
-      body.innerHTML = `<div style="padding:24px;text-align:center;font-weight:700;">Loading live orders from Supabase PostgreSQL database...</div>`;
-
-      try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/comfort_food_orders?select=*&order=created_at.desc&limit=25`, {
-          headers: {
-            "apikey": SUPABASE_ANON_KEY,
-            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
-          }
-        });
-        const orders = await res.json();
-        if (!Array.isArray(orders) || orders.length === 0) {
-          body.innerHTML = `<div style="padding:24px;text-align:center;">No orders in database yet. Place an order from the menu to see it appear live here!</div>`;
-          return;
-        }
-
-        body.innerHTML = `
-          <div style="margin-bottom:12px;font-size:12.5px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center;">
-            <span>Showing <strong>${orders.length}</strong> live order(s) stored in Supabase DB</span>
-            <button type="button" class="btn-orders-feed" onclick="openKitchenFeed()">↻ Refresh</button>
-          </div>
-        ` + orders.map(o => {
-          const itemSummary = Array.isArray(o.items)
-            ? o.items.map(i => `${i.qty}x ${i.name} (Rs. ${i.price * i.qty})`).join(", ")
-            : "";
-          return `
-            <div class="order-card-saved">
-              <div style="display:flex;justify-content:space-between;font-weight:800;color:var(--olive-dark);margin-bottom:4px;">
-                <span>#${o.order_code} — ${o.customer_name}</span>
-                <span>Rs. ${(o.total_pkr || 0).toLocaleString()}</span>
-              </div>
-              <div style="font-size:12px;color:var(--olive-main);font-weight:700;margin-bottom:4px;">
-                📞 ${o.customer_phone} • 📍 ${o.delivery_area}
-              </div>
-              <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">
-                🏠 ${o.delivery_address} ${o.order_notes ? ' • 📝 ' + o.order_notes : ''}
-              </div>
-              <div style="font-size:12px;background:var(--cream-bg);padding:6px 8px;border-radius:8px;font-weight:600;">
-                🍽️ ${itemSummary}
-              </div>
-            </div>
-          `;
-        }).join("");
-      } catch (e) {
-        body.innerHTML = `<div style="padding:20px;color:red;">Could not load live orders: ${e.message}</div>`;
-      }
     }
 
     renderMenu();
