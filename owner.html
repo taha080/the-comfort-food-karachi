@@ -50,7 +50,7 @@
   .pin-box button{width:100%;margin-top:12px;padding:13px;border:none;border-radius:999px;background:var(--olive-main);color:#fff;font-weight:800;font-size:15px;cursor:pointer}
   #pinErr{color:var(--red);font-weight:700;font-size:13px;min-height:18px;margin-top:8px}
   .pin-hint{font-size:12px;color:var(--text-muted);margin-top:10px;line-height:1.5}
-  .link-btn{background:none;border:none;color:var(--olive-main);font-weight:800;font-size:13.5px;cursor:pointer;text-decoration:underline;padding:6px 0}
+  .pin-box button.link-btn{background:none;border:none;color:var(--olive-main);font-weight:800;font-size:13.5px;cursor:pointer;text-decoration:underline;padding:6px 0;width:auto;margin:0;border-radius:0}
   #resetMsg{color:var(--green);font-weight:700;font-size:13px;min-height:18px;margin-top:8px;line-height:1.5}
   #resetForm{display:none}
   #resetForm p{color:var(--text-muted);font-size:13.5px;margin:0 0 16px;line-height:1.5}
@@ -144,6 +144,13 @@
     showApp();
   }
 
+  function resetErrorText(error) {
+    const m = (error && error.message) || "";
+    if (/rate limit/i.test(m)) return "Too many reset emails have been sent recently. Please wait about an hour and try again.";
+    if (/redirect/i.test(m)) return "The reset link could not be sent — the return address is not allowed. Please contact support.";
+    return "The reset link could not be sent — please try again." + (m ? " (" + m + ")" : "");
+  }
+
   async function forgotPassword() {
     const email = document.getElementById("loginEmail").value.trim();
     const errEl = document.getElementById("pinErr");
@@ -152,7 +159,7 @@
     msgEl.textContent = "";
     if (!email) { errEl.textContent = "Please enter your owner email above first, then click 'Forgot password?'."; document.getElementById("loginEmail").focus(); return; }
     const { error } = await supa.auth.resetPasswordForEmail(email, { redirectTo: "https://taha080.github.io/the-comfort-food-karachi/owner.html" });
-    if (error) { errEl.textContent = "The reset link could not be sent — please try again."; return; }
+    if (error) { errEl.textContent = resetErrorText(error); return; }
     msgEl.textContent = "A reset link has been sent to your email. Please check your inbox (and spam folder) — click the link to set a new password.";
   }
 
